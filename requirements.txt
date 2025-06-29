@@ -1,0 +1,16 @@
+Flask==2.3.3
+python-dotenv==1.0.0
+requests==2.31.0
+
+# 資料庫相關 (SQLite 通常內建)
+# 如果需要額外的 SQLite 功能可以加入：
+# pysqlite3==0.5.1
+
+# 系統監控相關
+psutil==5.9.5
+
+# 日期時間處理
+pytz==2023.3
+
+# 日誌相關
+colorlog==6.7.0

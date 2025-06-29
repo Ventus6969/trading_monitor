@@ -1,0 +1,71 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+monitor_env/
+venv/
+env/
+ENV/
+
+# 環境變數和配置
+.env
+.env.local
+.env.production
+
+# 日誌檔案
+logs/
+*.log
+
+# 資料庫和數據檔案
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# 同步相關的運行時檔案
+.sync_stats
+.last_sync_hash
+.data_protected
+*_backup.db
+
+# SSH 金鑰
+*.pem
+*.key
+id_rsa*
+known_hosts
+
+# 系統檔案
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# 備份檔案
+*.backup
+*.bak
+*_backup_*
+
+# 臨時檔案
+temp/
+tmp/
+*.tmp
