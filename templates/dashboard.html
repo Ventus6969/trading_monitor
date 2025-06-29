@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>69交易機器人監控系統</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <!-- 導航欄 -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-robot me-2"></i>69交易監控
+            </a>
+            <div class="navbar-nav ms-auto">
+                <span class="navbar-text me-3">{{ user.user_id }} ({{ user.role }})</span>
+                <a class="nav-link" href="/logout">登出</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <!-- 數據健康狀態 -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="alert alert-{{ 'success' if basic_stats.data_health == 'good' else 'warning' if basic_stats.data_health == 'warning' else 'danger' }}" role="alert">
+                    <i class="fas fa-{{ 'check-circle' if basic_stats.data_health == 'good' else 'exclamation-triangle' if basic_stats.data_health == 'warning' else 'times-circle' }} me-2"></i>
+                    <strong>數據狀態:</strong> 
+                    {% if basic_stats.data_health == 'good' %}
+                        良好 - 最近信號: {{ basic_stats.last_signal_time }}
+                    {% elif basic_stats.data_health == 'warning' %}
+                        警告 - 數據可能較舊
+                    {% else %}
+                        錯誤 - {{ basic_stats.last_signal_time }}
+                    {% endif %}
+                    
+                    <button class="btn btn-sm btn-outline-primary ms-3" onclick="syncData()">
+                        <i class="fas fa-sync"></i> 手動同步
+                    </button>
+                    
+                    <small class="ms-3">最後更新: {{ last_updated }}</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- 統計卡片 -->
+        <div class="row mb-4">
+            <div class="col-md-3 col-sm-6 mb-3">
+                <div class="card bg-primary text-white">
+                    <div class="card-body text-center">
+                        <h6>總信號數</h6>
+                        <h2>{{ basic_stats.total_signals }}</h2>
+                        <small>今日: {{ basic_stats.today_signals }}</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6 mb-3">
+                <div class="card bg-success text-white">
+                    <div class="card-body text-center">
+                        <h6>總勝率</h6>
+                        <h2>{{ basic_stats.total_win_rate }}%</h2>
+                        <small>本週: {{ basic_stats.week_win_rate }}%</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6 mb-3">
+                <div class="card bg-{{ 'success' if basic_stats.total_pnl >= 0 else 'danger' }} text-white">
+                    <div class="card-body text-center">
+                        <h6>總盈虧</h6>
+                        <h2>{{ "+" if basic_stats.total_pnl >= 0 else "" }}{{ basic_stats.total_pnl }}</h2>
+                        <small>平均: {{ basic_stats.avg_pnl }}</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6 mb-3">
+                <div class="card bg-info text-white">
+                    <div class="card-body text-center">
+                        <h6>總訂單</h6>
+                        <h2>{{ basic_stats.total_orders }}</h2>
+                        <small>活躍: {{ basic_stats.active_orders }}</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 最近信號記錄 -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5><i class="fas fa-list me-2"></i>最近信號記錄</h5>
+                        <button class="btn btn-sm btn-outline-success" onclick="location.reload()">
+                            <i class="fas fa-refresh"></i> 刷新
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        {% if recent_signals %}
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>時間</th>
+                                        <th>信號類型</th>
+                                        <th>交易對</th>
+                                        <th>方向</th>
+                                        <th>ATR</th>
+                                        <th>狀態</th>
+                                        <th>盈虧</th>
+                                        <th>結果</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for signal in recent_signals %}
+                                    <tr>
+                                        <td><small>{{ signal.timestamp }}</small></td>
+                                        <td><span class="badge bg-secondary">{{ signal.signal_type }}</span></td>
+                                        <td><strong>{{ signal.symbol }}</strong></td>
+                                        <td><span class="badge bg-{{ 'success' if signal.side == 'BUY' else 'danger' }}">{{ signal.side }}</span></td>
+                                        <td>{{ signal.atr_value or 'N/A' }}</td>
+                                        <td><span class="badge bg-info">{{ signal.order_status }}</span></td>
+                                        <td>
+                                            {% if signal.final_pnl %}
+                                                <span class="text-{{ 'success' if signal.final_pnl >= 0 else 'danger' }}">
+                                                    {{ "+" if signal.final_pnl >= 0 else "" }}{{ signal.final_pnl }}
+                                                </span>
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if signal.is_successful is not none %}
+                                                <i class="fas fa-{{ 'check' if signal.is_successful else 'times' }} text-{{ 'success' if signal.is_successful else 'danger' }}"></i>
+                                            {% else %}
+                                                <i class="fas fa-clock text-muted"></i>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="text-center text-muted py-4">
+                            <i class="fas fa-inbox fa-3x mb-3"></i>
+                            <h5>暫無信號記錄</h5>
+                            <p>請檢查數據同步是否正常</p>
+                            <button class="btn btn-primary" onclick="syncData()">
+                                <i class="fas fa-sync"></i> 立即同步數據
+                            </button>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 系統資訊 -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card bg-light">
+                    <div class="card-body">
+                        <h6 class="card-title">
+                            <i class="fas fa-info-circle me-2"></i>系統資訊
+                        </h6>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <small><strong>監控主機:</strong> {{ request.host }}</small>
+                            </div>
+                            <div class="col-md-4">
+                                <small><strong>交易主機:</strong> 15.168.60.229</small>
+                            </div>
+                            <div class="col-md-4">
+                                <small><strong>版本:</strong> v1.0 簡化版</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function syncData() {
+            const btn = event.target;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 同步中...';
+            btn.disabled = true;
+            
+            fetch('/api/sync')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        alert('✅ 同步成功！正在刷新頁面...');
+                        location.reload();
+                    } else {
+                        alert('❌ 同步失敗：' + data.message);
+                    }
+                })
+                .catch(error => {
+                    alert('❌ 同步請求失敗：' + error);
+                })
+                .finally(() => {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                });
+        }
+        
+        // 每60秒自動刷新
+        setTimeout(() => {
+            console.log('自動刷新頁面...');
+            location.reload();
+        }, 60000);
+    </script>
+</body>
+</html>
